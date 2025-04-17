@@ -30,6 +30,9 @@ exports.deleteProject = catchAsync(async (req, res, next) => {
       status: "error",
     });
   } else {
+    // Delete all tasks related to project
+    await Task.deleteMany({ projectId: req.body.id });
+
     res.status(204).json({
       status: "success",
     });
