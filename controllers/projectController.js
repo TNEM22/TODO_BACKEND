@@ -69,6 +69,20 @@ exports.createTask = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.updateTask = catchAsync(async (req, res, next) => {
+  const updatedTask = await Task.findByIdAndUpdate(req.body.id, {
+    title: req.body.title,
+    note: req.body.note,
+    milestones: req.body.milestones,
+    assignedDate: req.body.assignedDate,
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: updatedTask,
+  });
+});
+
 exports.deleteTask = catchAsync(async (req, res, next) => {
   const deletedTask = await Task.findByIdAndDelete(req.body.id);
   if (!deletedTask) {
@@ -83,7 +97,17 @@ exports.deleteTask = catchAsync(async (req, res, next) => {
 });
 
 exports.changeTaskStatus = catchAsync(async (req, res, next) => {
-  await Task.findByIdAndUpdate(req.body.id, { status: req.body.status });
+  const { id, status } = req.body;
+  const query = {
+    status: status,
+  };
+
+  if (status === "DONE") {
+    const task = await Task.findById(id);
+    query.completedMilestones = task.milestones;
+  }
+
+  await Task.findByIdAndUpdate(id, query);
 
   res.status(200).json({
     status: "success",

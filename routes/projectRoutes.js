@@ -17,6 +17,8 @@ router
   .route("/task")
   .post(projectController.createTask)
   .delete(projectController.deleteTask)
-  .patch(projectController.changeTaskStatus);
+  .patch(projectController.updateTask);
+
+router.route("/task/status").patch(projectController.changeTaskStatus);
 
 module.exports = router;
