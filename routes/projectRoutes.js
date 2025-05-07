@@ -10,7 +10,8 @@ router
   .route("/")
   .get(projectController.getProjects)
   .post(projectController.createProject)
-  .delete(projectController.deleteProject);
+  .delete(projectController.deleteProject)
+  .patch(projectController.updateProject);
 
 router.get("/:id/task", projectController.getTasks);
 router

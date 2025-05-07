@@ -15,11 +15,60 @@ exports.createProject = catchAsync(async (req, res, next) => {
   const newProject = await Project.create({
     title: req.body.title,
     userId: req.user._id,
+    columns: [{ title: "To Do" }, { title: "In Progress" }, { title: "Done" }],
   });
 
   res.status(201).json({
     status: "success",
     data: newProject,
+  });
+});
+
+exports.updateProject = catchAsync(async (req, res, next) => {
+  const projectId = req.body.id;
+  const newColumns = req.body.columns;
+
+  // Fetch the current project
+  const existingProject = await Project.findById(projectId);
+  if (!existingProject) {
+    return res.status(404).json({
+      status: "error",
+      message: "Project not found",
+    });
+  }
+
+  // Identify removed columns
+  const oldColumns = existingProject.columns;
+
+  const newIds = newColumns.map((col) => col._id.toString());
+  const oldIds = oldColumns.map((col) => col._id.toString());
+
+  const removedIds = oldIds.filter((item) => !newIds.includes(item.toString()));
+  // console.log("Old columns:", oldColumns);
+  // console.log("Removed Ids:", removedIds);
+
+  // Delete tasks that had status in removed columns if any
+  if (removedIds.length > 0) {
+    await Task.deleteMany({
+      projectId,
+      status: { $in: removedIds },
+    });
+  }
+
+  // Update the project with new columns
+  const updatedProject = await Project.findByIdAndUpdate(
+    projectId,
+    {
+      title: req.body.title,
+      // columns: req.body.columns,
+      columns: newColumns,
+    },
+    { new: true }
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: updatedProject,
   });
 });
 
@@ -40,8 +89,22 @@ exports.deleteProject = catchAsync(async (req, res, next) => {
 });
 
 exports.getTasks = catchAsync(async (req, res, next) => {
-  const tasks = await Task.find({ projectId: req.params.id });
+  if (!req.params.id || req.params.id === "undefined") {
+    return res.status(400).json({
+      status: "error",
+      message: "Project ID is required",
+    });
+  }
 
+  const project = await Project.findById(req.params.id);
+  if (!project) {
+    return res.status(404).json({
+      status: "error",
+      message: "Project not found",
+    });
+  }
+
+  const tasks = await Task.find({ projectId: req.params.id });
   res.status(200).json({
     status: "success",
     data: tasks,
@@ -74,6 +137,7 @@ exports.updateTask = catchAsync(async (req, res, next) => {
     title: req.body.title,
     note: req.body.note,
     milestones: req.body.milestones,
+    completedMilestones: req.body.completedMilestones,
     assignedDate: req.body.assignedDate,
   });
 
@@ -97,12 +161,12 @@ exports.deleteTask = catchAsync(async (req, res, next) => {
 });
 
 exports.changeTaskStatus = catchAsync(async (req, res, next) => {
-  const { id, status } = req.body;
+  const { id, status, statusTitle } = req.body;
   const query = {
     status: status,
   };
 
-  if (status === "DONE") {
+  if (statusTitle === "done") {
     const task = await Task.findById(id);
     query.completedMilestones = task.milestones;
   }
